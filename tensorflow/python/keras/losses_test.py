@@ -666,6 +666,9 @@ class BinaryCrossentropyTest(test.TestCase):
                                   dtype=dtypes.float32)
     bce_obj = losses.BinaryCrossentropy()
     loss = bce_obj(y_true, y_true)
+
+    # in reality prediction values are clipped between 1e-7 and
+    # (1-1e-7) so the loss will never be perfectly equal to 0
     self.assertAlmostEqual(self.evaluate(loss), 0.0, 3)
 
     # Test with logits.
@@ -686,13 +689,12 @@ class BinaryCrossentropyTest(test.TestCase):
     # y` = clip_ops.clip_by_value(output, EPSILON, 1. - EPSILON)
     # y` = [Y_MAX, Y_MAX, Y_MAX, EPSILON]
 
-    # Loss = -(y log(y` + EPSILON) + (1 - y) log(1 - y` + EPSILON))
-    #      = [-log(Y_MAX + EPSILON), -log(1 - Y_MAX + EPSILON),
-    #         -log(Y_MAX + EPSILON), -log(1)]
-    #      = [0, 15.33, 0, 0]
-    # Reduced loss = 15.33 / 4
+    # Loss = -(y log(y`) + (1 - y) log(1 - y`))
+    #      = [-log(Y_MAX), -log(1 - Y_MAX), -log(Y_MAX), -log(Y_MAX)]
+    #      = [~0, 15.94, ~0, ~0]
+    # Reduced loss = sum(weighted_loss) / 4
 
-    self.assertAlmostEqual(self.evaluate(loss), 3.833, 3)
+    self.assertAlmostEqual(self.evaluate(loss), 3.986, 3)
 
     # Test with logits.
     y_true = constant_op.constant([[1, 0, 1], [0, 1, 1]])
@@ -724,14 +726,12 @@ class BinaryCrossentropyTest(test.TestCase):
     # y` = clip_ops.clip_by_value(output, EPSILON, 1. - EPSILON)
     # y` = [Y_MAX, Y_MAX, Y_MAX, EPSILON]
 
-    # Loss = -(y log(y` + EPSILON) + (1 - y) log(1 - y` + EPSILON))
-    #      = [-log(Y_MAX + EPSILON), -log(1 - Y_MAX + EPSILON),
-    #         -log(Y_MAX + EPSILON), -log(1)]
-    #      = [0, 15.33, 0, 0]
-    # Weighted loss = [0, 15.33 * 2.3, 0, 0]
-    # Reduced loss = 15.33 * 2.3 / 4
+    # Loss = -(y log(y`) + (1 - y) log(1 - y`))
+    #      = [-log(Y_MAX), -log(1 - Y_MAX), -log(Y_MAX), -log(Y_MAX)]
+    # Weighted loss = [~0 * 2.3, 15.94 * 2.3, ~0 * 2.3, ~0 * 2.3]
+    # Reduced loss = sum(weighted_loss) / 4
 
-    self.assertAlmostEqual(self.evaluate(loss), 8.817, 3)
+    self.assertAlmostEqual(self.evaluate(loss), 9.167, 3)
 
     # Test with logits.
     y_true = constant_op.constant([[1, 0, 1], [0, 1, 1]])
@@ -759,13 +759,12 @@ class BinaryCrossentropyTest(test.TestCase):
     # y` = clip_ops.clip_by_value(output, EPSILON, 1. - EPSILON)
     # y` = [Y_MAX, Y_MAX, Y_MAX, EPSILON]
 
-    # Loss = -(y log(y` + EPSILON) + (1 - y) log(1 - y` + EPSILON))
-    #      = [-log(Y_MAX + EPSILON), -log(1 - Y_MAX + EPSILON),
-    #         -log(Y_MAX + EPSILON), -log(1)]
-    #      = [0, 15.33, 0, 0]
-    # Reduced loss = 15.33 * 1.2 / 4
+    # Loss = -(y log(y`) + (1 - y) log(1 - y`))
+    #      = [-log(Y_MAX), -log(1 - Y_MAX), -log(Y_MAX), -log(Y_MAX)]
+    # Weighted loss = [~0 * 1.2, 15.94 * 1.2, ~0 * 3.4, ~0 * 3.4]
+    # Reduced loss = sum(weighted_loss) / 4
 
-    self.assertAlmostEqual(self.evaluate(loss), 4.6, 3)
+    self.assertAlmostEqual(self.evaluate(loss), 4.783, 3)
 
     # Test with logits.
     y_true = constant_op.constant([[1, 0, 1], [0, 1, 1]])
